@@ -1,4 +1,4 @@
-/* global fetch */
+/* global fetch, setTimeout, clearTimeout */
 import React, {Component} from 'react';
 import {render} from 'react-dom';
 
@@ -17,6 +17,9 @@ const MAPBOX_STYLE =
   'https://rivulet-zhang.github.io/dataRepo/mapbox/style/map-style-dark-v9-no-labels.json';
 
 const DATA_URL = 'https://opensky-network.org/api/states/all';
+const MODEL_URL =
+  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb';
+const REFRESH_TIME = 30000;
 
 export const INITIAL_VIEW_STATE = {
   latitude: 39.1,
@@ -28,6 +31,7 @@ export const INITIAL_VIEW_STATE = {
 };
 
 const DATA_INDEX = {
+  UNIQUE_ID: 0,
   ORIGIN_COUNTRY: 2,
   LONGITUDE: 5,
   LATITUDE: 6,
@@ -45,12 +49,32 @@ export class App extends Component {
     this._loadData();
   }
 
+  componentWillUnmount() {
+    if (this.state.nextTimeoutId) {
+      clearTimeout(this.state.nextTimeoutId);
+    }
+  }
+
+  _sort(data, oldData) {
+    // In order to keep the animation smooth we need to always return the same
+    // objects in the exact same order. This function will discard new objects
+    // and only update existing ones.
+    if (!oldData) {
+      return data;
+    }
+
+    const dataAsObj = {};
+    data.forEach(entry => (dataAsObj[entry[DATA_INDEX.UNIQUE_ID]] = entry));
+    return oldData.map(entry => dataAsObj[entry[DATA_INDEX.UNIQUE_ID]] || entry);
+  }
+
   _loadData() {
     fetch(DATA_URL)
       .then(resp => resp.json())
       .then(resp => {
         if (resp && resp.states) {
-          this.setState({data: resp.states});
+          const nextTimeoutId = setTimeout(() => this._loadData(), REFRESH_TIME);
+          this.setState({data: this._sort(resp.states, this.state.data), nextTimeoutId});
         }
       });
   }
@@ -65,16 +89,18 @@ export class App extends Component {
           data,
           pickable: true,
           sizeScale: 10,
-          scenegraph:
-            'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb',
+          scenegraph: MODEL_URL,
           getPosition: d => [
             d[DATA_INDEX.LONGITUDE] || 0,
             d[DATA_INDEX.LATITUDE] || 0,
             d[DATA_INDEX.GEO_ALTITUDE] || 0
           ],
-          getOrientation: d => [0, 90 + (d[DATA_INDEX.TRUE_TRACK] || 0), 90],
+          getOrientation: d => [0, 180 + (d[DATA_INDEX.TRUE_TRACK] || 0), 90],
           getTranslation: [0, 0, 0],
-          getScale: [1, 1, 1]
+          getScale: [1, 1, 1],
+          transitions: {
+            getPosition: REFRESH_TIME * 0.9
+          }
         })
       ];
     }
