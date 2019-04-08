@@ -18,11 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+import './effects';
+import './experimental';
+import './lib';
+import './lifecycle';
+import './shaderlib';
+import './transitions';
 import './utils';
 import './viewports';
 import './views';
-import './lifecycle';
-import './lib';
-import './shaderlib';
-import './transitions';
-import './experimental';
